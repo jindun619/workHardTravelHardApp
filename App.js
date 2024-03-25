@@ -7,9 +7,14 @@ import {
   View,
   TouchableOpacity,
   TextInput,
+  ScrollView,
 } from "react-native";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { theme } from "./colors";
+
+const STORAGE_KEY = "@toDos";
 
 export default function App() {
   const [working, setWorking] = useState(true);
@@ -25,17 +30,32 @@ export default function App() {
   const onChangeText = (payload) => {
     setText(payload);
   };
-  const addToDo = () => {
+  const saveToDos = async (toSave) => {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  };
+  const loadToDos = async () => {
+    const str = await AsyncStorage.getItem(STORAGE_KEY);
+    setToDos(JSON.parse(str));
+  };
+  const addToDo = async () => {
     if (text === "") {
       return;
     }
-    const newToDos = Object.assign({}, toDos, {
+    const newToDos = {
+      ...toDos,
       [Date.now()]: { text, work: working },
-    });
+    };
     setToDos(newToDos);
+    await saveToDos(newToDos);
     setText("");
   };
 
+  useEffect(() => {
+    loadToDos();
+    // (async () => {
+    //   AsyncStorage.clear();
+    // })()
+  }, []);
   useEffect(() => {
     console.log(toDos);
   }, [toDos]);
@@ -74,6 +94,17 @@ export default function App() {
           value={text}
           style={styles.input}
         />
+        <ScrollView>
+          {toDos
+            ? Object.keys(toDos).map((key) =>
+                toDos[key].work === working ? (
+                  <View key={key} style={styles.toDo}>
+                    <Text style={styles.toDoText}>{toDos[key].text}</Text>
+                  </View>
+                ) : null
+              )
+            : null}
+        </ScrollView>
       </View>
     </View>
   );
@@ -97,10 +128,22 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: "white",
-    marginTop: 20,
+    marginVertical: 20,
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderRadius: 30,
     fontSize: 18,
+  },
+  toDo: {
+    backgroundColor: theme.toDoBg,
+    marginBottom: 10,
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    borderRadius: 15,
+  },
+  toDoText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "500",
   },
 });
